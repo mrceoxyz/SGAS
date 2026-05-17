@@ -70,11 +70,15 @@ export const attendanceDB = {
     end.setHours(23, 59, 59, 999);
 
     return Attendance.find({
-      arrivedAt: {
-        $gte: start,
-        $lte: end,
-      },
-    }).populate("studentId");
+    arrivedAt: {
+      $gte: start,
+      $lte: end,
+    },
+  })
+    .populate("studentId")
+    .sort({
+      arrivedAt: -1,
+    });
   },
 
   async getByStudentToday(studentId: string) {

@@ -1,27 +1,75 @@
 import { NextResponse } from "next/server";
-import { attendanceDB, studentsDB } from "@/lib/db";
-import type { DashboardStats } from "@/lib/types";
+
+import {
+  attendanceDB,
+  studentsDB,
+} from "@/lib/db";
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const mode = searchParams.get("mode");
+  try {
+    const { searchParams } =
+      new URL(req.url);
 
-  if (mode === "stats") {
-    const students = studentsDB.getAll();
-    const today = attendanceDB.getToday();
-    const recent = attendanceDB.getRecent(1);
+    const mode =
+      searchParams.get("mode");
 
-    const stats: DashboardStats = {
-      totalStudents: students.length,
-      arrivedToday: today.length,
-      pendingToday: Math.max(0, students.length - today.length),
-      lastScan: recent[0],
-    };
-    return NextResponse.json(stats);
+    // ─────────────────────────────────────────────
+    // Dashboard Stats
+    // ─────────────────────────────────────────────
+
+    if (mode === "stats") {
+      const students =
+        await studentsDB.getAll();
+
+      const today =
+        await attendanceDB.getToday();
+
+      const recent =
+        await attendanceDB.getRecent(1);
+
+      const stats = {
+        totalStudents:
+          students.length,
+
+        arrivedToday:
+          today.length,
+
+        pendingToday: Math.max(
+          0,
+          students.length - today.length
+        ),
+
+        lastScan:
+          recent.length > 0
+            ? recent[0]
+            : null,
+      };
+
+      return NextResponse.json(stats);
+    }
+
+    // ─────────────────────────────────────────────
+    // Today's Attendance Records
+    // ─────────────────────────────────────────────
+
+    const records =
+      await attendanceDB.getToday();
+
+    return NextResponse.json(records);
+  } catch (error) {
+    console.error(
+      "[ATTENDANCE_API_ERROR]",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Internal server error",
+      },
+      {
+        status: 500,
+      }
+    );
   }
-
-  const records = attendanceDB.getToday();
-  return NextResponse.json(records.sort(
-    (a, b) => new Date(b.arrivedAt).getTime() - new Date(a.arrivedAt).getTime()
-  ));
 }

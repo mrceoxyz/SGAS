@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
+
+import dynamic from "next/dynamic";
+
 import {
   Plus,
   Search,
@@ -12,36 +19,101 @@ import {
   Phone,
   Users,
 } from "lucide-react";
-import type { Student } from "@/lib/types";
-import dynamic from "next/dynamic";
 
-const StudentForm = dynamic(() => import("@/components/StudentForm"), { ssr: false });
+const StudentForm = dynamic(
+  () =>
+    import(
+      "@/components/StudentForm"
+    ),
+  {
+    ssr: false,
+  }
+);
 
-function QRModal({ student, onClose }: { student: Student; onClose: () => void }) {
-  const src = `/api/qr/${student.id}`;
+
+
+interface Student {
+  _id: string;
+
+  studentId: string;
+
+  fullName: string;
+
+  className: string;
+
+  parentPhone: string;
+
+  parentWhatsapp?: string;
+
+  parentName: string;
+
+  notificationChannel:
+    | "SMS"
+    | "WHATSAPP"
+    | "BOTH";
+
+  photo?: string;
+}
+
+// ─────────────────────────────────────────────
+// QR MODAL
+// ─────────────────────────────────────────────
+
+function QRModal({
+  student,
+  onClose,
+}: {
+  student: Student;
+
+  onClose: () => void;
+}) {
+  const src =
+    `/api/qr/${student._id}`;
+
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 shadow-2xl max-w-xs w-full text-center animate-slide-up">
-        <h3 className="font-semibold text-slate-900 mb-1">{student.name}</h3>
-        <p className="text-xs text-slate-400 mb-5">{student.grade}</p>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt="QR Code" className="w-52 h-52 mx-auto rounded-xl border border-slate-100" />
-        <p className="text-[11px] text-slate-400 mt-3 mb-5">
-          Print and attach this QR to the student's bag or ID tag.
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-xs rounded-2xl bg-white p-6 text-center shadow-2xl animate-slide-up">
+
+        <h3 className="mb-1 font-semibold text-slate-900">
+          {student.fullName}
+        </h3>
+
+        <p className="mb-5 text-xs text-slate-400">
+          {student.className}
         </p>
+
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+
+        <img
+          src={src}
+          alt="QR Code"
+          className="mx-auto h-52 w-52 rounded-xl border border-slate-100"
+        />
+
+        <p className="mb-5 mt-3 text-[11px] text-slate-400">
+          Print and attach this QR
+          code to the student's bag
+          or ID card.
+        </p>
+
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm"
+            className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm text-slate-600"
           >
             Close
           </button>
+
           <a
             href={src}
-            download={`${student.name.replace(/\s+/g, "_")}_qr.png`}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-medium transition-colors"
+            download={`${student.fullName.replace(
+              /\s+/g,
+              "_"
+            )}_qr.png`}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-sky-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-sky-700"
           >
-            <Download className="w-4 h-4" />
+            <Download className="h-4 w-4" />
+
             Download
           </a>
         </div>
@@ -50,6 +122,10 @@ function QRModal({ student, onClose }: { student: Student; onClose: () => void }
   );
 }
 
+// ─────────────────────────────────────────────
+// STUDENT CARD
+// ─────────────────────────────────────────────
+
 function StudentCard({
   student,
   onEdit,
@@ -57,212 +133,387 @@ function StudentCard({
   onQR,
 }: {
   student: Student;
+
   onEdit: () => void;
+
   onDelete: () => void;
+
   onQR: () => void;
 }) {
   const channelIcon =
-    student.notificationChannel === "whatsapp" ? (
-      <MessageCircle className="w-3 h-3 text-emerald-600" />
-    ) : student.notificationChannel === "sms" ? (
-      <Phone className="w-3 h-3 text-sky-600" />
+    student.notificationChannel ===
+    "WHATSAPP" ? (
+      <MessageCircle className="h-3 w-3 text-emerald-600" />
+    ) : student.notificationChannel ===
+      "SMS" ? (
+      <Phone className="h-3 w-3 text-sky-600" />
     ) : (
-      <span className="text-[10px] text-purple-600 font-medium">Both</span>
+      <span className="text-[10px] font-medium text-purple-600">
+        BOTH
+      </span>
     );
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm hover:shadow-md transition-all group">
-      <div className="flex items-start justify-between mb-3">
+    <div className="group rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:shadow-md">
+
+      <div className="mb-3 flex items-start justify-between">
+
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-semibold">
-            {student.name.charAt(0)}
+
+          <div className="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center overflow-hidden">
+            {student.photo ? (
+              <img
+                src={student.photo}
+                alt={student.fullName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-sky-700 font-semibold">
+                {student.fullName.charAt(0)}
+              </span>
+            )}
           </div>
+
           <div>
-            <p className="font-medium text-slate-900 text-sm">{student.name}</p>
-            <p className="text-xs text-slate-400">{student.grade}</p>
+            <p className="text-sm font-medium text-slate-900">
+              {student.fullName}
+            </p>
+
+            <p className="text-xs text-slate-400">
+              {student.className}
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+
           <button
             onClick={onQR}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-sky-50 text-slate-400 hover:text-sky-600 transition-colors"
-            title="View QR Code"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-sky-50 hover:text-sky-600"
           >
-            <QrCode className="w-4 h-4" />
+            <QrCode className="h-4 w-4" />
           </button>
+
           <button
             onClick={onEdit}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-            title="Edit"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
           >
-            <Pencil className="w-4 h-4" />
+            <Pencil className="h-4 w-4" />
           </button>
+
           <button
             onClick={onDelete}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
-            title="Delete"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="space-y-1 text-xs text-slate-500 border-t border-slate-50 pt-3">
-        <p className="font-medium text-slate-600">{student.parentName}</p>
+      <div className="space-y-1 border-t border-slate-50 pt-3 text-xs text-slate-500">
+
         <div className="flex items-center justify-between">
-          <p className="font-mono">{student.parentPhone}</p>
-          <div className="flex items-center gap-1">{channelIcon}</div>
+          <p className="font-medium">
+            {student.parentName}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <p className="font-mono">
+            {student.parentPhone}
+          </p>
+
+          {channelIcon}
         </div>
       </div>
 
       <button
         onClick={onQR}
-        className="w-full mt-3 flex items-center justify-center gap-2 py-2 bg-slate-50 hover:bg-sky-50 hover:text-sky-700 text-slate-500 rounded-xl text-xs font-medium transition-colors"
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-50 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-sky-50 hover:text-sky-700"
       >
-        <QrCode className="w-3.5 h-3.5" />
+        <QrCode className="h-3.5 w-3.5" />
+
         View QR Code
       </button>
     </div>
   );
 }
 
-export default function StudentsPage() {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editStudent, setEditStudent] = useState<Student | undefined>();
-  const [qrStudent, setQrStudent] = useState<Student | null>(null);
+// ─────────────────────────────────────────────
+// PAGE
+// ─────────────────────────────────────────────
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/students");
-      setStudents(await res.json());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+export default function StudentsPage() {
+  const [students, setStudents] =
+    useState<Student[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [search, setSearch] =
+    useState("");
+
+  const [showForm, setShowForm] =
+    useState(false);
+
+  const [
+    editStudent,
+    setEditStudent,
+  ] = useState<
+    Student | undefined
+  >();
+
+  const [qrStudent, setQrStudent] =
+    useState<Student | null>(
+      null
+    );
+
+  // Load students
+
+  const load = useCallback(
+    async () => {
+      try {
+        const res =
+          await fetch(
+            "/api/students"
+          );
+
+        const data =
+          await res.json();
+
+        setStudents(
+          data.students || data
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const handleDelete = async (student: Student) => {
-    if (!confirm(`Delete ${student.name}? This cannot be undone.`)) return;
-    await fetch(`/api/students/${student.id}`, { method: "DELETE" });
-    setStudents((prev) => prev.filter((s) => s.id !== student.id));
-  };
+  // Delete
 
-  const handleSaved = (saved: Student) => {
+  const handleDelete =
+    async (
+      student: Student
+    ) => {
+      const confirmed =
+        confirm(
+          `Delete ${student.fullName}?`
+        );
+
+      if (!confirmed) return;
+
+      await fetch(
+        `/api/students/${student._id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      setStudents((prev) =>
+        prev.filter(
+          (s) =>
+            s._id !==
+            student._id
+        )
+      );
+    };
+
+  // Save
+
+  const handleSaved = (
+    saved: Student
+  ) => {
     setStudents((prev) => {
-      const idx = prev.findIndex((s) => s.id === saved.id);
+      const idx =
+        prev.findIndex(
+          (s) =>
+            s._id ===
+            saved._id
+        );
+
       if (idx >= 0) {
         const next = [...prev];
+
         next[idx] = saved;
+
         return next;
       }
+
       return [saved, ...prev];
     });
+
     setShowForm(false);
+
     setEditStudent(undefined);
   };
 
-  const filtered = students.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.grade.toLowerCase().includes(search.toLowerCase()) ||
-      s.parentName.toLowerCase().includes(search.toLowerCase())
-  );
+  // Search
+
+  const filtered =
+    students.filter(
+      (student) =>
+        student.fullName
+          .toLowerCase()
+          .includes(
+            search.toLowerCase()
+          ) ||
+        student.className
+          .toLowerCase()
+          .includes(
+            search.toLowerCase()
+          ) ||
+        student.parentPhone.includes(
+          search
+        )
+    );
 
   return (
-    <div className="p-6 md:p-8 max-w-5xl mx-auto">
+    <div className="mx-auto max-w-5xl p-6 md:p-8">
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+
+      <div className="mb-6 flex items-center justify-between">
+
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Students</h1>
-          <p className="text-slate-400 text-sm mt-0.5">
-            {students.length} student{students.length !== 1 ? "s" : ""} registered
+          <h1 className="text-2xl font-bold text-slate-900">
+            Students
+          </h1>
+
+          <p className="mt-0.5 text-sm text-slate-400">
+            {students.length}{" "}
+            registered student
+            {students.length !== 1
+              ? "s"
+              : ""}
           </p>
         </div>
+
         <button
           onClick={() => {
-            setEditStudent(undefined);
+            setEditStudent(
+              undefined
+            );
+
             setShowForm(true);
           }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
+          className="flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-sky-700"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="h-4 w-4" />
+
           Add Student
         </button>
       </div>
 
       {/* Search */}
+
       <div className="relative mb-6">
-        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
+
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, grade, or parent…"
-          className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-transparent transition bg-white"
+          onChange={(e) =>
+            setSearch(
+              e.target.value
+            )
+          }
+          placeholder="Search students..."
+          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-300 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-200"
         />
       </div>
 
-      {/* Student grid */}
+      {/* Content */}
+
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-slate-100 p-4 h-40 animate-pulse" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Users className="w-8 h-8 text-slate-300" />
-          </div>
-          <p className="text-slate-400 font-medium">
-            {search ? "No students match your search." : "No students added yet."}
-          </p>
-          {!search && (
-            <button
-              onClick={() => setShowForm(true)}
-              className="mt-4 px-5 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-medium transition-colors"
-            >
-              Add First Student
-            </button>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map(
+            (_, i) => (
+              <div
+                key={i}
+                className="h-40 animate-pulse rounded-2xl border border-slate-100 bg-white p-4"
+              />
+            )
           )}
         </div>
+      ) : filtered.length ===
+        0 ? (
+        <div className="py-20 text-center">
+
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
+            <Users className="h-8 w-8 text-slate-300" />
+          </div>
+
+          <p className="font-medium text-slate-400">
+            No students found
+          </p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((student) => (
-            <StudentCard
-              key={student.id}
-              student={student}
-              onEdit={() => {
-                setEditStudent(student);
-                setShowForm(true);
-              }}
-              onDelete={() => handleDelete(student)}
-              onQR={() => setQrStudent(student)}
-            />
-          ))}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map(
+            (student) => (
+              <StudentCard
+                key={
+                  student._id
+                }
+                student={
+                  student
+                }
+                onEdit={() => {
+                  setEditStudent(
+                    student
+                  );
+
+                  setShowForm(
+                    true
+                  );
+                }}
+                onDelete={() =>
+                  handleDelete(
+                    student
+                  )
+                }
+                onQR={() =>
+                  setQrStudent(
+                    student
+                  )
+                }
+              />
+            )
+          )}
         </div>
       )}
 
       {/* Modals */}
+
       {showForm && (
         <StudentForm
           student={editStudent}
           onClose={() => {
             setShowForm(false);
-            setEditStudent(undefined);
+
+            setEditStudent(
+              undefined
+            );
           }}
           onSaved={handleSaved}
         />
       )}
 
       {qrStudent && (
-        <QRModal student={qrStudent} onClose={() => setQrStudent(null)} />
+        <QRModal
+          student={qrStudent}
+          onClose={() =>
+            setQrStudent(
+              null
+            )
+          }
+        />
       )}
     </div>
   );

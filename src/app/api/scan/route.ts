@@ -1,22 +1,93 @@
 import { NextResponse } from "next/server";
 
-import { studentsDB, attendanceDB } from "@/lib/db";
-import { sendNotifications } from "@/lib/notify";
+import mongoose from "mongoose";
 
-export async function POST(req: Request) {
+import {
+  attendanceDB,
+  studentsDB,
+} from "@/lib/db";
+
+import { sendNotifications }
+  from "@/lib/notify";
+
+export async function POST(
+  req: Request
+) {
   try {
+    // ─────────────────────────────────────────────
+    // Parse request body
+    // ─────────────────────────────────────────────
+
     const body = await req.json();
 
-    const { studentId } = body;
+    let studentId: string | undefined;
+
+    /**
+     * Supports:
+     *
+     * {
+     *   studentId: "..."
+     * }
+     *
+     * OR full QR payload:
+     *
+     * {
+     *   qrData: "{...}"
+     * }
+     */
+
+    if (body.studentId) {
+      studentId = body.studentId;
+    }
+
+    if (body.qrData) {
+      try {
+        const parsed =
+          JSON.parse(body.qrData);
+
+        studentId =
+          parsed.studentId;
+      } catch {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Invalid QR code format",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+    }
 
     // ─────────────────────────────────────────────
-    // Validate request
+    // Validate student ID
     // ─────────────────────────────────────────────
 
     if (!studentId) {
       return NextResponse.json(
         {
-          error: "studentId is required",
+          success: false,
+          error:
+            "studentId is required",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      !mongoose.Types.ObjectId.isValid(
+        studentId
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Invalid student ID",
         },
         {
           status: 400,
@@ -28,12 +99,17 @@ export async function POST(req: Request) {
     // Find student
     // ─────────────────────────────────────────────
 
-    const student = await studentsDB.getById(studentId);
+    const student =
+      await studentsDB.getById(
+        studentId
+      );
 
     if (!student) {
       return NextResponse.json(
         {
-          error: "Student not found",
+          success: false,
+          error:
+            "Student not found",
         },
         {
           status: 404,
@@ -42,7 +118,7 @@ export async function POST(req: Request) {
     }
 
     // ─────────────────────────────────────────────
-    // Prevent duplicate attendance
+    // Prevent duplicate scans
     // ─────────────────────────────────────────────
 
     const existing =
@@ -56,6 +132,9 @@ export async function POST(req: Request) {
 
         alreadyArrived: true,
 
+        message:
+          "Student already scanned today",
+
         student,
 
         attendance: existing,
@@ -65,20 +144,35 @@ export async function POST(req: Request) {
     }
 
     // ─────────────────────────────────────────────
+    // Attendance timestamp
+    // ─────────────────────────────────────────────
+
+    const arrivedAt =
+      new Date();
+
+    // ─────────────────────────────────────────────
     // Send notifications
     // ─────────────────────────────────────────────
 
-    const arrivedAt = new Date();
+    let notifications: any[] = [];
 
-    const notifications =
-      await sendNotifications(
-        student,
-        arrivedAt
+    try {
+      notifications =
+        await sendNotifications(
+          student,
+          arrivedAt
+        );
+    } catch (notificationError) {
+      console.error(
+        "[NOTIFICATION_ERROR]",
+        notificationError
       );
+    }
 
     const anySuccess =
       notifications.some(
-        (notification) => notification.success
+        (notification: any) =>
+          notification.success
       );
 
     // ─────────────────────────────────────────────
@@ -87,23 +181,30 @@ export async function POST(req: Request) {
 
     const attendance =
       await attendanceDB.save({
-        studentId: student._id,
+        studentId:
+          student._id,
 
-        status: "PRESENT",
+        status:
+          "PRESENT",
 
         arrivedAt,
 
-        notified: anySuccess,
+        notified:
+          anySuccess,
 
         notificationChannel:
-          student.notificationChannel || "WHATSAPP",
+          student.notificationChannel ||
+          "WHATSAPP",
 
-        notificationError: anySuccess
-          ? null
-          : notifications
-              .map((n) => n.error)
-              .filter(Boolean)
-              .join("; "),
+        notificationError:
+          anySuccess
+            ? null
+            : notifications
+                .map(
+                  (n: any) => n.error
+                )
+                .filter(Boolean)
+                .join("; "),
       });
 
     // ─────────────────────────────────────────────
@@ -114,6 +215,9 @@ export async function POST(req: Request) {
       success: true,
 
       alreadyArrived: false,
+
+      message:
+        "Attendance recorded successfully",
 
       student,
 
@@ -130,7 +234,8 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         success: false,
-        error: "Internal server error",
+        error:
+          "Internal server error",
       },
       {
         status: 500,

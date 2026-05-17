@@ -28,6 +28,11 @@ const StudentSchema = new Schema(
       required: true,
     },
 
+    parentName: {
+      type: String,
+      required: true,
+    },
+
     parentWhatsapp: {
       type: String,
       required: true,

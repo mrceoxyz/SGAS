@@ -1,215 +1,431 @@
 "use client";
 
 import { useState } from "react";
-import { X, Save, Loader2 } from "lucide-react";
-import type { Student } from "@/lib/types";
+
+import {
+  X,
+  Save,
+  Loader2,
+} from "lucide-react";
+
+interface Student {
+  _id: string;
+
+  studentId: string;
+
+  fullName: string;
+
+  className: string;
+
+  parentPhone: string;
+
+  parentName: string;
+
+  parentWhatsapp?: string;
+
+  notificationChannel:
+    | "SMS"
+    | "WHATSAPP"
+    | "BOTH";
+
+  photo?: string;
+}
 
 interface StudentFormProps {
   student?: Student;
+
   onClose: () => void;
-  onSaved: (student: Student) => void;
+
+  onSaved: (
+    student: Student
+  ) => void;
 }
 
-const GRADES = [
-  "Nursery 1", "Nursery 2",
-  "KG 1", "KG 2",
-  "Grade 1", "Grade 2", "Grade 3", "Grade 4",
-  "Grade 5", "Grade 6", "Grade 7", "Grade 8",
-  "Grade 9", "Grade 10", "Grade 11", "Grade 12",
-  "JSS 1", "JSS 2", "JSS 3",
-  "SS 1", "SS 2", "SS 3",
+const CLASSES = [
+  "Nursery 1",
+  "Nursery 2",
+
+  "KG 1",
+  "KG 2",
+
+  "Grade 1",
+  "Grade 2",
+  "Grade 3",
+  "Grade 4",
+
+  "Grade 5",
+  "Grade 6",
+
+  "JSS 1",
+  "JSS 2",
+  "JSS 3",
+
+  "SS 1",
+  "SS 2",
+  "SS 3",
 ];
 
-export default function StudentForm({ student, onClose, onSaved }: StudentFormProps) {
-  const [form, setForm] = useState({
-    name: student?.name ?? "",
-    grade: student?.grade ?? "",
-    parentName: student?.parentName ?? "",
-    parentPhone: student?.parentPhone ?? "",
-    parentWhatsApp: student?.parentWhatsApp ?? "",
-    notificationChannel: student?.notificationChannel ?? "whatsapp",
+export default function StudentForm({
+  student,
+  onClose,
+  onSaved,
+}: StudentFormProps) {
+  const [form, setForm] =
+    useState({
+      fullName:
+        student?.fullName ?? "",
+
+      className:
+        student?.className ?? "",
+
+      parentPhone:
+        student?.parentPhone ?? "",
+
+      parentName:
+        student?.parentName ?? "",
+
+      parentWhatsapp:
+        student?.parentWhatsapp ??
+        "",
+
+      notificationChannel:
+        student?.notificationChannel ??
+        "WHATSAPP",
+
+      photo:
+        student?.photo ?? "",
+    });
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+const [uploading, setUploading] = useState(false);
+
+  const set = (
+    field: string,
+    value: string
+  ) =>
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+  const uploadPhoto = async () => {
+  if (!photoFile) return null;
+
+  setUploading(true);
+
+  const formData = new FormData();
+  formData.append("file", photoFile);
+
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    body: formData,
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  const set = (field: string, value: string) =>
-    setForm((prev) => ({ ...prev, [field]: value }));
+  const data = await res.json();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  setUploading(false);
 
-    try {
-      const url = student ? `/api/students/${student.id}` : "/api/students";
-      const method = student ? "PUT" : "POST";
+  return data.url;
+};
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Failed to save student.");
-        return;
-      }
+  try {
+    const photoUrl = await uploadPhoto();
 
-      const saved: Student = await res.json();
-      onSaved(saved);
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
+    const payload = {
+      ...form,
+      photo: photoUrl || student?.photo || "",
+    };
+
+    const url = student
+      ? `/api/students/${student._id}`
+      : "/api/students";
+
+    const method = student ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.error || "Failed to save student");
+      return;
     }
-  };
+
+    onSaved(data.student || data);
+  } catch {
+    setError("Upload failed or network error");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-slide-up">
-        {/* Modal header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
-          <h2 className="font-semibold text-slate-900 text-base">
-            {student ? "Edit Student" : "Add New Student"}
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl animate-slide-up">
+
+        {/* Header */}
+
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4 rounded-t-2xl">
+          <h2 className="text-base font-semibold text-slate-900">
+            {student
+              ? "Edit Student"
+              : "Add Student"}
           </h2>
+
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100"
           >
-            <X className="w-4 h-4 text-slate-500" />
+            <X className="h-4 w-4 text-slate-500" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-          {/* Student name */}
+        {/* Form */}
+
+        <form
+          onSubmit={
+            handleSubmit
+          }
+          className="space-y-4 px-6 py-5"
+        >
+          {/* Full Name */}
+
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">
+            <label className="mb-1.5 block text-xs font-medium text-slate-500">
               Student Full Name *
             </label>
+
             <input
-              type="text"
               required
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder="e.g. Amara Johnson"
-              className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-300 focus:border-transparent transition"
+              type="text"
+              value={
+                form.fullName
+              }
+              onChange={(e) =>
+                set(
+                  "fullName",
+                  e.target.value
+                )
+              }
+              placeholder="e.g. Amina Musa"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-300 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-300"
             />
           </div>
 
-          {/* Grade */}
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">
-              Grade / Class *
+              Student Photo
             </label>
+
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) =>
+                setPhotoFile(e.target.files?.[0] || null)
+              }
+              className="w-full text-sm"
+            />
+
+            {uploading && (
+              <p className="text-xs text-slate-400 mt-1">
+                Uploading image...
+              </p>
+            )}
+          </div>
+
+          {/* Class */}
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-slate-500">
+              Class *
+            </label>
+
             <select
               required
-              value={form.grade}
-              onChange={(e) => set("grade", e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-300 focus:border-transparent transition bg-white"
+              value={
+                form.className
+              }
+              onChange={(e) =>
+                set(
+                  "className",
+                  e.target.value
+                )
+              }
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-300"
             >
-              <option value="">Select grade…</option>
-              {GRADES.map((g) => (
-                <option key={g} value={g}>{g}</option>
-              ))}
+              <option value="">
+                Select class
+              </option>
+
+              {CLASSES.map(
+                (cls) => (
+                  <option
+                    key={cls}
+                    value={cls}
+                  >
+                    {cls}
+                  </option>
+                )
+              )}
             </select>
           </div>
 
           <hr className="border-slate-100" />
 
-          {/* Parent name */}
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">
-              Parent / Guardian Name *
-            </label>
-            <input
-              type="text"
-              required
-              value={form.parentName}
-              onChange={(e) => set("parentName", e.target.value)}
-              placeholder="e.g. Mrs. Johnson"
-              className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-300 focus:border-transparent transition"
-            />
-          </div>
+          {/* Parent Phone */}
 
-          {/* Parent phone */}
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">
-              Phone Number * <span className="text-slate-300">(E.164 format)</span>
+            <label className="mb-1.5 block text-xs font-medium text-slate-500">
+              Parent/Guardian's Phone Number *
             </label>
+
             <input
-              type="tel"
               required
-              value={form.parentPhone}
-              onChange={(e) => set("parentPhone", e.target.value)}
+              type="tel"
+              value={
+                form.parentPhone
+              }
+              onChange={(e) =>
+                set(
+                  "parentPhone",
+                  e.target.value
+                )
+              }
               placeholder="+2348012345678"
-              className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-mono text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-300 focus:border-transparent transition"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-mono text-slate-900 placeholder:text-slate-300 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-300"
             />
-            <p className="text-[11px] text-slate-400 mt-1">Include country code, e.g. +234 for Nigeria</p>
           </div>
 
-          {/* WhatsApp (optional) */}
+          {/* Parent Name */}
+
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">
-              WhatsApp Number <span className="text-slate-300">(if different)</span>
+            <label className="mb-1.5 block text-xs font-medium text-slate-500">
+              Parent/Guardian's Full Name *
             </label>
+
+            <input
+              required
+              type="text"
+              value={
+                form.parentName
+              }
+              onChange={(e) =>
+                set(
+                  "parentName",
+                  e.target.value
+                )
+              }
+              placeholder="e.g. Mrs. Mariam Adekunle"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-300 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-300"
+            />
+          </div>
+
+          {/* WhatsApp */}
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-slate-500">
+              WhatsApp Number
+            </label>
+
             <input
               type="tel"
-              value={form.parentWhatsApp}
-              onChange={(e) => set("parentWhatsApp", e.target.value)}
-              placeholder="Same as phone if blank"
-              className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-mono text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-300 focus:border-transparent transition"
+              value={
+                form.parentWhatsapp
+              }
+              onChange={(e) =>
+                set(
+                  "parentWhatsapp",
+                  e.target.value
+                )
+              }
+              placeholder="Optional"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-mono text-slate-900 placeholder:text-slate-300 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-300"
             />
           </div>
 
-          {/* Notification channel */}
+          {/* Notification */}
+
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-2">
-              Notify Parent Via *
+            <label className="mb-2 block text-xs font-medium text-slate-500">
+              Notification Channel
             </label>
+
             <div className="grid grid-cols-3 gap-2">
-              {(["whatsapp", "sms", "both"] as const).map((ch) => (
+              {[
+                "WHATSAPP",
+                "SMS",
+                "BOTH",
+              ].map((channel) => (
                 <button
-                  key={ch}
+                  key={channel}
                   type="button"
-                  onClick={() => set("notificationChannel", ch)}
-                  className={`py-2.5 rounded-xl text-xs font-medium border transition-all capitalize ${
-                    form.notificationChannel === ch
-                      ? "bg-sky-600 border-sky-600 text-white shadow-sm"
-                      : "bg-white border-slate-200 text-slate-500 hover:border-sky-300"
+                  onClick={() =>
+                    set(
+                      "notificationChannel",
+                      channel
+                    )
+                  }
+                  className={`rounded-xl border py-2.5 text-xs font-medium transition-all ${
+                    form.notificationChannel ===
+                    channel
+                      ? "border-sky-600 bg-sky-600 text-white"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-sky-300"
                   }`}
                 >
-                  {ch === "both" ? "Both" : ch === "whatsapp" ? "WhatsApp" : "SMS"}
+                  {channel}
                 </button>
               ))}
             </div>
           </div>
 
+          {/* Error */}
+
           {error && (
-            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-red-600 text-sm">
+            <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
               {error}
             </div>
           )}
+
+          {/* Buttons */}
 
           <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
+              className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
             >
               Cancel
             </button>
+
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white rounded-xl text-sm font-medium transition-colors"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-sky-600 py-2.5 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-60"
             >
               {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Save className="w-4 h-4" />
+                <Save className="h-4 w-4" />
               )}
-              {student ? "Update" : "Add Student"}
+
+              {student
+                ? "Update"
+                : "Add Student"}
             </button>
           </div>
         </form>

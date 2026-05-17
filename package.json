@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "cloudinary": "^2.10.0",
     "date-fns": "^3.6.0",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.400.0",

@@ -1,15 +1,15 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI!;
+const MONGODB_URI = 'mongodb+srv://mrceoxyz001_db_user:eQWXmuvhUlDSh3FT@schoolattendance.n2d2k6g.mongodb.net/?appName=schoolAttendance';
 
 if (!MONGODB_URI) {
   throw new Error("Please define MONGODB_URI");
 }
 
-let cached = (global as any).mongoose;
+let cached = global.mongoose;
 
 if (!cached) {
-  cached = (global as any).mongoose = {
+  cached = global.mongoose = {
     conn: null,
     promise: null,
   };
@@ -26,6 +26,7 @@ export async function connectDB() {
     });
   }
 
-  cached.conn = await cached.promise;  
+  cached.conn = await cached.promise; 
+
   return cached.conn;
 }
