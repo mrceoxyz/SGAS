@@ -7,6 +7,8 @@ export async function POST(req: Request) {
   try {
     const { studentId } = await req.json();
     alert(studentId)
+
+    // return NextResponse.json({ studentId });
     // if (!studentId) {
     //   return NextResponse.json({ error: "studentId is required" }, { status: 400 });
     // }

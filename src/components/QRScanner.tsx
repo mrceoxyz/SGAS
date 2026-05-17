@@ -50,12 +50,14 @@ export default function QRScanner({ onScanResult, onError, active }: QRScannerPr
                 const err = await res.json();
                 onError(err.error ?? "Unknown error scanning QR code.");
               } else {
-                const data: ScanResult = await res.json();
+                // 
+                
+                return res.json()
                 
                 // Vibrate on successful scan
                 navigator.vibrate?.(200);
                 
-                onScanResult(data);
+                // onScanResult(data);
               }
             } catch {
               onError("Network error. Please try again.");
