@@ -78,22 +78,22 @@ export async function POST(
       );
     }
 
-    if (
-      !mongoose.Types.ObjectId.isValid(
-        studentId
-      )
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Invalid student ID",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
+    // if (
+    //   !mongoose.Types.ObjectId.isValid(
+    //     studentId
+    //   )
+    // ) {
+    //   return NextResponse.json(
+    //     {
+    //       success: false,
+    //       error:
+    //         "Invalid student ID",
+    //     },
+    //     {
+    //       status: 400,
+    //     }
+    //   );
+    // }
 
     // ─────────────────────────────────────────────
     // Find student
