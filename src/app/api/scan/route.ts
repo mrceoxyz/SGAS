@@ -55,101 +55,105 @@ export async function POST(
       );
     }
 
-    // ─────────────────────────────
-    // Prevent duplicate attendance
-    // ─────────────────────────────
+    return NextResponse.json(
+      student
+    );
 
-    const existing =
-      await attendanceDB.getByStudentToday(
-        student._id.toString()
-      );
+    // // ─────────────────────────────
+    // // Prevent duplicate attendance
+    // // ─────────────────────────────
 
-    if (existing) {
-      return NextResponse.json<ScanResult>({
-        success: true,
+    // const existing =
+    //   await attendanceDB.getByStudentToday(
+    //     student._id.toString()
+    //   );
 
-        alreadyArrived: true,
+    // if (existing) {
+    //   return NextResponse.json<ScanResult>({
+    //     success: true,
 
-        student,
+    //     alreadyArrived: true,
 
-        attendance: existing,
+    //     student,
 
-        notifications: [],
-      });
-    }
+    //     attendance: existing,
 
-    // ─────────────────────────────
-    // Create attendance record
-    // ─────────────────────────────
+    //     notifications: [],
+    //   });
+    // }
 
-    const arrivedAt = new Date();
+    // // ─────────────────────────────
+    // // Create attendance record
+    // // ─────────────────────────────
 
-    // ─────────────────────────────
-    // Send notifications
-    // ─────────────────────────────
+    // const arrivedAt = new Date();
 
-    const notifications =
-      await sendNotifications(
-        student,
-        arrivedAt
-      );
+    // // ─────────────────────────────
+    // // Send notifications
+    // // ─────────────────────────────
 
-    const anySuccess =
-      notifications.some(
-        (n) => n.success
-      );
+    // const notifications =
+    //   await sendNotifications(
+    //     student,
+    //     arrivedAt
+    //   );
 
-    // ─────────────────────────────
-    // Save attendance
-    // ─────────────────────────────
+    // const anySuccess =
+    //   notifications.some(
+    //     (n) => n.success
+    //   );
 
-    const attendance =
-      await attendanceDB.save({
-        studentId: student._id,
+    // // ─────────────────────────────
+    // // Save attendance
+    // // ─────────────────────────────
 
-        studentName: student.name,
+    // const attendance =
+    //   await attendanceDB.save({
+    //     studentId: student._id,
 
-        grade: student.grade,
+    //     studentName: student.name,
 
-        arrivedAt,
+    //     grade: student.grade,
 
-        attendanceDate:
-          arrivedAt
-            .toISOString()
-            .split("T")[0],
+    //     arrivedAt,
 
-        status: "PRESENT",
+    //     attendanceDate:
+    //       arrivedAt
+    //         .toISOString()
+    //         .split("T")[0],
 
-        notified: anySuccess,
+    //     status: "PRESENT",
 
-        notificationChannel:
-          student.notificationChannel ||
-          "WHATSAPP",
+    //     notified: anySuccess,
 
-        notificationError:
-          anySuccess
-            ? null
-            : notifications
-                .map((n) => n.error)
-                .filter(Boolean)
-                .join("; "),
-      });
+    //     notificationChannel:
+    //       student.notificationChannel ||
+    //       "WHATSAPP",
 
-    // ─────────────────────────────
-    // Response
-    // ─────────────────────────────
+    //     notificationError:
+    //       anySuccess
+    //         ? null
+    //         : notifications
+    //             .map((n) => n.error)
+    //             .filter(Boolean)
+    //             .join("; "),
+    //   });
 
-    return NextResponse.json<ScanResult>({
-      success: true,
+    // // ─────────────────────────────
+    // // Response
+    // // ─────────────────────────────
 
-      alreadyArrived: false,
+    // return NextResponse.json<ScanResult>({
+    //   success: true,
 
-      student,
+    //   alreadyArrived: false,
 
-      attendance,
+    //   student,
 
-      notifications,
-    });
+    //   attendance,
+
+    //   notifications,
+    // });
   } catch (error) {
     console.error(
       "[SCAN_API_ERROR]",
