@@ -1,245 +1,63 @@
 import { NextResponse } from "next/server";
+import { studentsDB, attendanceDB } from "@/lib/db";
+import { sendNotifications } from "@/lib/notify";
+import type { AttendanceRecord, ScanResult } from "@/lib/types";
 
-import mongoose from "mongoose";
-
-import {
-  attendanceDB,
-  studentsDB,
-} from "@/lib/db";
-
-import { sendNotifications }
-  from "@/lib/notify";
-
-export async function POST(
-  req: Request
-) {
+export async function POST(req: Request) {
   try {
-    // ─────────────────────────────────────────────
-    // Parse request body
-    // ─────────────────────────────────────────────
-
-    const body = await req.json();
-
-    let studentId: string | undefined;
-
-    /**
-     * Supports:
-     *
-     * {
-     *   studentId: "..."
-     * }
-     *
-     * OR full QR payload:
-     *
-     * {
-     *   qrData: "{...}"
-     * }
-     */
-
-    if (body.studentId) {
-      studentId = body.studentId;
-    }
-
-    if (body.qrData) {
-      try {
-        const parsed =
-          JSON.parse(body.qrData);
-
-        studentId =
-          parsed.studentId;
-      } catch {
-        return NextResponse.json(
-          {
-            success: false,
-            error:
-              "Invalid QR code format",
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-    }
-
-    // ─────────────────────────────────────────────
-    // Validate student ID
-    // ─────────────────────────────────────────────
-
+    const { studentId } = await req.json();
     if (!studentId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "studentId is required",
-        },
-        {
-          status: 400,
-        }
-      );
+      return NextResponse.json({ error: "studentId is required" }, { status: 400 });
     }
 
-    // if (
-    //   !mongoose.Types.ObjectId.isValid(
-    //     studentId
-    //   )
-    // ) {
-    //   return NextResponse.json(
-    //     {
-    //       success: false,
-    //       error:
-    //         "Invalid student ID",
-    //     },
-    //     {
-    //       status: 400,
-    //     }
-    //   );
-    // }
-
-    // ─────────────────────────────────────────────
-    // Find student
-    // ─────────────────────────────────────────────
-
-    const student =
-      await studentsDB.getById(
-        studentId
-      );
-
+    // 1. Look up the student
+    const student = await studentsDB.getById(studentId);
     if (!student) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Student not found",
-        },
-        {
-          status: 404,
-        }
-      );
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
-    // ─────────────────────────────────────────────
-    // Prevent duplicate scans
-    // ─────────────────────────────────────────────
-
-    const existing =
-      await attendanceDB.getByStudentToday(
-        student._id.toString()
-      );
-
+    // 2. Check if already marked today
+    const existing = await attendanceDB.getByStudentToday(studentId);
     if (existing) {
-      return NextResponse.json({
-        success: true,
-
-        alreadyArrived: true,
-
-        message:
-          "Student already scanned today",
-
+      return NextResponse.json<ScanResult>({
         student,
-
         attendance: existing,
-
+        alreadyArrived: true,
         notifications: [],
       });
     }
 
-    // ─────────────────────────────────────────────
-    // Attendance timestamp
-    // ─────────────────────────────────────────────
+    // 3. Create attendance record
+    const arrivedAt = new Date();
+    const record: AttendanceRecord = {
+      id: crypto.randomUUID(),
+      studentId: student.id,
+      studentName: student.name,
+      grade: student.grade,
+      arrivedAt: arrivedAt.toISOString(),
+      notified: false,
+    };
 
-    const arrivedAt =
-      new Date();
+    // 4. Send notifications
+    const notifications = await sendNotifications(student, arrivedAt);
+    const anySuccess = notifications.some((n) => n.success);
 
-    // ─────────────────────────────────────────────
-    // Send notifications
-    // ─────────────────────────────────────────────
-
-    let notifications: any[] = [];
-
-    try {
-      notifications =
-        await sendNotifications(
-          student,
-          arrivedAt
-        );
-    } catch (notificationError) {
-      console.error(
-        "[NOTIFICATION_ERROR]",
-        notificationError
-      );
+    record.notified = anySuccess;
+    record.notificationChannel = student.notificationChannel;
+    if (!anySuccess) {
+      record.notificationError = notifications.map((n) => n.error).join("; ");
     }
 
-    const anySuccess =
-      notifications.some(
-        (notification: any) =>
-          notification.success
-      );
+    await attendanceDB.save(record);
 
-    // ─────────────────────────────────────────────
-    // Save attendance
-    // ─────────────────────────────────────────────
-
-    const attendance =
-      await attendanceDB.save({
-        studentId:
-          student._id,
-
-        status:
-          "PRESENT",
-
-        arrivedAt,
-
-        notified:
-          anySuccess,
-
-        notificationChannel:
-          student.notificationChannel ||
-          "WHATSAPP",
-
-        notificationError:
-          anySuccess
-            ? null
-            : notifications
-                .map(
-                  (n: any) => n.error
-                )
-                .filter(Boolean)
-                .join("; "),
-      });
-
-    // ─────────────────────────────────────────────
-    // Response
-    // ─────────────────────────────────────────────
-
-    return NextResponse.json({
-      success: true,
-
-      alreadyArrived: false,
-
-      message:
-        "Attendance recorded successfully",
-
+    return NextResponse.json<ScanResult>({
       student,
-
-      attendance,
-
+      attendance: record,
+      alreadyArrived: false,
       notifications,
     });
-  } catch (error) {
-    console.error(
-      "[SCAN_API_ERROR]",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        success: false,
-        error:
-          "Internal server error",
-      },
-      {
-        status: 500,
-      }
-    );
+  } catch (err) {
+    console.error("[scan] Error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

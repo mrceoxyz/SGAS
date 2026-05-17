@@ -50,6 +50,10 @@ export default function QRScanner({ onScanResult, onError, active }: QRScannerPr
                 onError(err.error ?? "Unknown error scanning QR code.");
               } else {
                 const data: ScanResult = await res.json();
+                
+                // Vibrate on successful scan
+                navigator.vibrate?.(200);
+                
                 onScanResult(data);
               }
             } catch {
@@ -58,7 +62,7 @@ export default function QRScanner({ onScanResult, onError, active }: QRScannerPr
               // Cooldown before next scan
               setTimeout(() => {
                 scanning.current = false;
-              }, 3000);
+              }, 1200);
             }
           },
           undefined
@@ -73,12 +77,32 @@ export default function QRScanner({ onScanResult, onError, active }: QRScannerPr
 
     return () => {
       if (scannerRef.current) {
-        const s = scannerRef.current as { stop: () => Promise<void> };
-        s.stop().catch(() => {});
+        const s = scannerRef.current as {
+          stop: () => Promise<void>;
+          clear: () => Promise<void>;
+        };
+
+        s.stop()
+        .then(() => s.clear())
+        .catch(() => {});
+
         scannerRef.current = null;
       }
+
+      // Extra browser-level cleanup
+      const video = containerRef.current?.querySelector("video");
+
+      if (video && video.srcObject) {
+        const stream = video.srcObject as MediaStream;
+
+        stream.getTracks().forEach((track) => {
+          track.stop();
+        });
+
+        video.srcObject = null;
+      }
     };
-  }, [active]);
+  }, [active, onError, onScanResult]);
 
   return (
     <div className="relative">
