@@ -33,6 +33,7 @@ const StudentForm = dynamic(
 
 
 interface Student {
+  id: any;
   _id: string;
 
   studentId: string;
@@ -68,7 +69,7 @@ function QRModal({
   onClose: () => void;
 }) {
   const src =
-    `/api/qr/${student._id}`;
+    `/api/qr/${student.id}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
