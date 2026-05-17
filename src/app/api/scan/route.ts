@@ -6,7 +6,7 @@ import type { AttendanceRecord, ScanResult } from "@/lib/types";
 export async function POST(req: Request) {
   try {
     const { studentId } = await req.json();
-    console.log("[scan] Received studentId:", studentId);
+    alert(studentId)
     // if (!studentId) {
     //   return NextResponse.json({ error: "studentId is required" }, { status: 400 });
     // }

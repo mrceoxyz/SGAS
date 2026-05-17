@@ -37,6 +37,7 @@ export default function QRScanner({ onScanResult, onError, active }: QRScannerPr
           async (decodedText: string) => {
             if (scanning.current) return;
             scanning.current = true;
+            alert(decodedText);
 
             try {
               const res = await fetch("/api/scan", {
