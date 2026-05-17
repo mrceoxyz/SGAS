@@ -75,13 +75,22 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
+    const controller = new AbortController();
+
     try {
       setLoading(true);
-
       const [statsRes, recRes] = await Promise.all([
-        fetch("/api/attendance?mode=stats"),
-        fetch("/api/attendance"),
+        fetch("/api/attendance?mode=stats", {
+          signal: controller.signal,
+        }),
+        fetch("/api/attendance", {
+          signal: controller.signal,
+        }),
       ]);
+
+      if (!statsRes.ok || !recRes.ok) {
+        throw new Error("Failed to fetch dashboard data");
+      }
 
       const statsData = await statsRes.json();
       const recData = await recRes.json();
@@ -89,16 +98,18 @@ export default function DashboardPage() {
       setStats(statsData);
       setRecords(Array.isArray(recData) ? recData : []);
     } catch (err) {
-      console.error(err);
+      console.error("[DASHBOARD_LOAD_ERROR]", err);
     } finally {
       setLoading(false);
     }
+
+    return () => controller.abort();
   };
 
   useEffect(() => {
     load();
-    // const interval = setInterval(load, 15000); // Auto-refresh every 15s
-    // return () => clearInterval(interval);
+    const interval = setInterval(load, 15000); // Auto-refresh every 15s
+    return () => clearInterval(interval);
   }, []);
 
   const today = new Date().toLocaleDateString("en-US", {

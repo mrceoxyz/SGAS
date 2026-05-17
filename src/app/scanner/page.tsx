@@ -24,12 +24,30 @@ export default function ScannerPage() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [scanActive, setScanActive] = useState(true);
+  const [processing, setProcessing] = useState(false);
 
-  const handleResult = useCallback((res: ScanResult) => {
-    setResult(res);
-    setStatus(res.alreadyArrived ? "duplicate" : "success");
-    setScanActive(false);
-  }, []);
+  const handleResult = useCallback(
+    async (res: ScanResult) => {
+      if (processing) return;
+
+      setProcessing(true);
+
+      setResult(res);
+
+      setStatus(
+        res.alreadyArrived
+          ? "duplicate"
+          : "success"
+      );
+
+      setScanActive(false);
+
+      setTimeout(() => {
+        setProcessing(false);
+      }, 1500);
+    },
+    [processing]
+  );
 
   const handleError = useCallback((msg: string) => {
     setErrorMsg(msg);
@@ -44,13 +62,16 @@ export default function ScannerPage() {
     setScanActive(true);
   };
 
-  const arrivedTime = result
-    ? new Date(result.attendance.arrivedAt).toLocaleTimeString("en-US", {
+  const arrivedTime =
+  result?.attendance?.arrivedAt
+    ? new Date(
+        result.attendance.arrivedAt
+      ).toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
       })
-    : "";
+    : "--";
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-8">
@@ -87,13 +108,36 @@ export default function ScannerPage() {
           </div>
         )}
 
+        {processing && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-white rounded-2xl px-6 py-4 shadow-xl">
+              <p className="text-sm font-medium text-slate-700">
+                Processing scan...
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Success state */}
         {status === "success" && result && (
           <div className="text-center space-y-6 animate-slide-up">
             <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
-              <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-5">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-slate-100 mx-auto mb-5">
+                {result.student.photo ? (
+                  <img
+                    src={result.student.photo}
+                    alt={result.student.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-emerald-100">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                  </div>
+                )}
               </div>
+              {/* <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-5">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+              </div> */}
 
               <h2 className="text-xl font-bold text-slate-900">{result.student.name}</h2>
               <p className="text-slate-400 text-sm mt-1">{result.student.grade}</p>
