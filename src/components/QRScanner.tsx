@@ -42,7 +42,7 @@ export default function QRScanner({ onScanResult, onError, active }: QRScannerPr
               const res = await fetch("/api/scan", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(decodedText),
+                body: JSON.stringify({ studentId: decodedText }),
               });
 
               if (!res.ok) {
@@ -53,10 +53,8 @@ export default function QRScanner({ onScanResult, onError, active }: QRScannerPr
                 
                 // Vibrate on successful scan
                 navigator.vibrate?.(200);
-
-                alert(data)
                 
-                // onScanResult(data);
+                onScanResult(data);
               }
             } catch {
               onError("Network error. Please try again.");
