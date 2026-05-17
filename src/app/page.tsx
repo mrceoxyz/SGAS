@@ -97,8 +97,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 15000); // Auto-refresh every 15s
-    return () => clearInterval(interval);
+    // const interval = setInterval(load, 15000); // Auto-refresh every 15s
+    // return () => clearInterval(interval);
   }, []);
 
   const today = new Date().toLocaleDateString("en-US", {
