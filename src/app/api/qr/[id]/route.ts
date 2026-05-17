@@ -19,7 +19,7 @@ export async function GET(
     // Find student
     // ─────────────────────────────────────────────
 
-    const student =
+    const student = 
       await studentsDB.getById(
         params.id
       );

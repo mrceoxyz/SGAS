@@ -1,66 +1,171 @@
 import { NextResponse } from "next/server";
-import { studentsDB, attendanceDB } from "@/lib/db";
+
+import {
+  studentsDB,
+  attendanceDB,
+} from "@/lib/db";
+
 import { sendNotifications } from "@/lib/notify";
-import type { AttendanceRecord, ScanResult } from "@/lib/types";
 
-export async function POST(req: Request) {
+import type {
+  AttendanceRecord,
+  ScanResult,
+} from "@/lib/types";
+
+export async function POST(
+  req: Request
+) {
   try {
-    const { studentId } = await req.json();
-    alert(studentId)
+    const body = await req.json();
 
-    // return NextResponse.json({ studentId });
-    // if (!studentId) {
-    //   return NextResponse.json({ error: "studentId is required" }, { status: 400 });
-    // }
+    const { studentId } = body;
 
-    // // 1. Look up the student
-    // const student = await studentsDB.getById(studentId);
-    // if (!student) {
-    //   return NextResponse.json({ error: "Student not found" }, { status: 404 });
-    // }
+    // ─────────────────────────────
+    // Validate request
+    // ─────────────────────────────
 
-    // // 2. Check if already marked today
-    // const existing = await attendanceDB.getByStudentToday(studentId);
-    // if (existing) {
-    //   return NextResponse.json<ScanResult>({
-    //     student,
-    //     attendance: existing,
-    //     alreadyArrived: true,
-    //     notifications: [],
-    //   });
-    // }
+    if (!studentId) {
+      return NextResponse.json(
+        {
+          error: "studentId is required",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
-    // // 3. Create attendance record
-    // const arrivedAt = new Date();
-    // const record: AttendanceRecord = {
-    //   id: crypto.randomUUID(),
-    //   studentId: student.id,
-    //   studentName: student.name,
-    //   grade: student.grade,
-    //   arrivedAt: arrivedAt.toISOString(),
-    //   notified: false,
-    // };
+    // ─────────────────────────────
+    // Find student
+    // ─────────────────────────────
 
-    // // 4. Send notifications
-    // const notifications = await sendNotifications(student, arrivedAt);
-    // const anySuccess = notifications.some((n) => n.success);
+    const student =
+      await studentsDB.getById(
+        studentId
+      );
 
-    // record.notified = anySuccess;
-    // record.notificationChannel = student.notificationChannel;
-    // if (!anySuccess) {
-    //   record.notificationError = notifications.map((n) => n.error).join("; ");
-    // }
+    if (!student) {
+      return NextResponse.json(
+        {
+          error: "Student not found",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
 
-    // await attendanceDB.save(record);
+    // ─────────────────────────────
+    // Prevent duplicate attendance
+    // ─────────────────────────────
 
-    // return NextResponse.json<ScanResult>({
-    //   student,
-    //   attendance: record,
-    //   alreadyArrived: false,
-    //   notifications,
-    // });
-  } catch (err) {
-    console.error("[scan] Error:", err);
-    return NextResponse.json({ error: "Internal server error!!!" }, { status: 500 });
+    const existing =
+      await attendanceDB.getByStudentToday(
+        student._id.toString()
+      );
+
+    if (existing) {
+      return NextResponse.json<ScanResult>({
+        success: true,
+
+        alreadyArrived: true,
+
+        student,
+
+        attendance: existing,
+
+        notifications: [],
+      });
+    }
+
+    // ─────────────────────────────
+    // Create attendance record
+    // ─────────────────────────────
+
+    const arrivedAt = new Date();
+
+    // ─────────────────────────────
+    // Send notifications
+    // ─────────────────────────────
+
+    const notifications =
+      await sendNotifications(
+        student,
+        arrivedAt
+      );
+
+    const anySuccess =
+      notifications.some(
+        (n) => n.success
+      );
+
+    // ─────────────────────────────
+    // Save attendance
+    // ─────────────────────────────
+
+    const attendance =
+      await attendanceDB.save({
+        studentId: student._id,
+
+        studentName: student.name,
+
+        grade: student.grade,
+
+        arrivedAt,
+
+        attendanceDate:
+          arrivedAt
+            .toISOString()
+            .split("T")[0],
+
+        status: "PRESENT",
+
+        notified: anySuccess,
+
+        notificationChannel:
+          student.notificationChannel ||
+          "WHATSAPP",
+
+        notificationError:
+          anySuccess
+            ? null
+            : notifications
+                .map((n) => n.error)
+                .filter(Boolean)
+                .join("; "),
+      });
+
+    // ─────────────────────────────
+    // Response
+    // ─────────────────────────────
+
+    return NextResponse.json<ScanResult>({
+      success: true,
+
+      alreadyArrived: false,
+
+      student,
+
+      attendance,
+
+      notifications,
+    });
+  } catch (error) {
+    console.error(
+      "[SCAN_API_ERROR]",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+
+        error:
+          "Internal server error",
+      },
+      {
+        status: 500,
+      }
+    );
   }
 }

@@ -30,6 +30,7 @@ export interface NotificationResult {
 }
 
 export interface ScanResult {
+  success?: boolean;
   student: Student;
   attendance: AttendanceRecord;
   alreadyArrived: boolean;

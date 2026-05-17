@@ -37,7 +37,6 @@ export default function QRScanner({ onScanResult, onError, active }: QRScannerPr
           async (decodedText: string) => {
             if (scanning.current) return;
             scanning.current = true;
-            // alert(decodedText);
 
             try {
               const res = await fetch("/api/scan", {
@@ -50,14 +49,12 @@ export default function QRScanner({ onScanResult, onError, active }: QRScannerPr
                 const err = await res.json();
                 onError(err.error ?? "Unknown error scanning QR code.");
               } else {
-                // 
-                
-                return res.json()
+                const data: ScanResult = await res.json();
                 
                 // Vibrate on successful scan
                 navigator.vibrate?.(200);
                 
-                // onScanResult(data);
+                onScanResult(data);
               }
             } catch {
               onError("Network error. Please try again.");
