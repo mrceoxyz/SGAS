@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 interface Student {
+  id: any;
   _id: string;
 
   studentId: string;
