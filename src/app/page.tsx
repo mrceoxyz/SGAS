@@ -44,11 +44,13 @@ function ArrivalRow({ record }: { record: AttendanceRecord }) {
     <div className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-semibold text-sm">
-          {record.studentName.charAt(0)}
+          {(record.studentName ?? "U").charAt(0)}
         </div>
         <div>
           <p className="text-sm font-medium text-slate-800">{record.studentName}</p>
-          <p className="text-xs text-slate-400">{record.grade}</p>
+          <p className="text-xs text-slate-400">
+            {record.grade ?? "No grade"}
+          </p>
         </div>
       </div>
       <div className="text-right">
@@ -74,12 +76,20 @@ export default function DashboardPage() {
 
   const load = async () => {
     try {
+      setLoading(true);
+
       const [statsRes, recRes] = await Promise.all([
         fetch("/api/attendance?mode=stats"),
         fetch("/api/attendance"),
       ]);
-      setStats(await statsRes.json());
-      setRecords(await recRes.json());
+
+      const statsData = await statsRes.json();
+      const recData = await recRes.json();
+
+      setStats(statsData);
+      setRecords(Array.isArray(recData) ? recData : []);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -98,10 +108,10 @@ export default function DashboardPage() {
     day: "numeric",
   });
 
-  const pct =
-    stats && stats.totalStudents > 0
-      ? Math.round((stats.arrivedToday / stats.totalStudents) * 100)
-      : 0;
+  const total = stats?.totalStudents ?? 0;
+  const arrived = stats?.arrivedToday ?? 0;
+
+  const pct = total > 0 ? Math.round((arrived / total) * 100) : 0;
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto">
