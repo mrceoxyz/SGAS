@@ -1,96 +1,122 @@
-/**
- * Simple JSON file-based data store.
- * In production, replace with a proper database (PostgreSQL, MongoDB, etc.)
- */
+import { connectDB } from "./mongodb";
 
-import fs from "fs";
-import path from "path";
-import type { Student, AttendanceRecord } from "./types";
+import Student from "@/models/Student";
+import Attendance from "@/models/Attendance";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
-const STUDENTS_FILE = path.join(DATA_DIR, "students.json");
-const ATTENDANCE_FILE = path.join(DATA_DIR, "attendance.json");
+// ─────────────────────────────────────────────────────────────
+// Students
+// ─────────────────────────────────────────────────────────────
 
-// ── Ensure data directory exists ────────────────────────────────────
-function ensureDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-}
-
-function readJSON<T>(filePath: string, defaultValue: T): T {
-  ensureDir();
-  if (!fs.existsSync(filePath)) return defaultValue;
-  try {
-    return JSON.parse(fs.readFileSync(filePath, "utf-8")) as T;
-  } catch {
-    return defaultValue;
-  }
-}
-
-function writeJSON(filePath: string, data: unknown) {
-  ensureDir();
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
-}
-
-// ── Students ─────────────────────────────────────────────────────────
 export const studentsDB = {
-  getAll(): Student[] {
-    return readJSON<Student[]>(STUDENTS_FILE, []);
+  async getAll() {
+    await connectDB();
+
+    return Student.find().sort({
+      createdAt: -1,
+    });
   },
 
-  getById(id: string): Student | undefined {
-    return this.getAll().find((s) => s.id === id);
+  async getById(id: string) {
+    await connectDB();
+
+    return Student.findById(id);
   },
 
-  save(student: Student): Student {
-    const all = this.getAll();
-    const idx = all.findIndex((s) => s.id === student.id);
-    if (idx >= 0) all[idx] = student;
-    else all.push(student);
-    writeJSON(STUDENTS_FILE, all);
-    return student;
+  async save(student: any) {
+    await connectDB();
+
+    if (student._id) {
+      return Student.findByIdAndUpdate(
+        student._id,
+        student,
+        { new: true }
+      );
+    }
+
+    return Student.create(student);
   },
 
-  delete(id: string): boolean {
-    const all = this.getAll();
-    const filtered = all.filter((s) => s.id !== id);
-    if (filtered.length === all.length) return false;
-    writeJSON(STUDENTS_FILE, filtered);
-    return true;
+  async delete(id: string) {
+    await connectDB();
+
+    const deleted = await Student.findByIdAndDelete(id);
+
+    return !!deleted;
   },
 };
 
-// ── Attendance ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// Attendance
+// ─────────────────────────────────────────────────────────────
+
 export const attendanceDB = {
-  getAll(): AttendanceRecord[] {
-    return readJSON<AttendanceRecord[]>(ATTENDANCE_FILE, []);
+  async getAll() {
+    await connectDB();
+
+    return Attendance.find()
+      .populate("studentId")
+      .sort({
+        arrivedAt: -1,
+      });
   },
 
-  getToday(): AttendanceRecord[] {
-    const today = new Date().toISOString().split("T")[0];
-    return this.getAll().filter((r) => r.arrivedAt.startsWith(today));
+  async getToday() {
+    await connectDB();
+
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+
+    return Attendance.find({
+      arrivedAt: {
+        $gte: start,
+        $lte: end,
+      },
+    }).populate("studentId");
   },
 
-  getByStudentToday(studentId: string): AttendanceRecord | undefined {
-    const today = new Date().toISOString().split("T")[0];
-    return this.getAll().find(
-      (r) => r.studentId === studentId && r.arrivedAt.startsWith(today)
-    );
+  async getByStudentToday(studentId: string) {
+    await connectDB();
+
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+
+    return Attendance.findOne({
+      studentId,
+      arrivedAt: {
+        $gte: start,
+        $lte: end,
+      },
+    });
   },
 
-  save(record: AttendanceRecord): AttendanceRecord {
-    const all = this.getAll();
-    const idx = all.findIndex((r) => r.id === record.id);
-    if (idx >= 0) all[idx] = record;
-    else all.push(record);
-    writeJSON(ATTENDANCE_FILE, all);
-    return record;
+  async save(record: any) {
+    await connectDB();
+
+    if (record._id) {
+      return Attendance.findByIdAndUpdate(
+        record._id,
+        record,
+        { new: true }
+      );
+    }
+
+    return Attendance.create(record);
   },
 
-  getRecent(limit = 20): AttendanceRecord[] {
-    return this.getAll()
-      .sort((a, b) => new Date(b.arrivedAt).getTime() - new Date(a.arrivedAt).getTime())
-      .slice(0, limit);
+  async getRecent(limit = 20) {
+    await connectDB();
+
+    return Attendance.find()
+      .populate("studentId")
+      .sort({
+        arrivedAt: -1,
+      })
+      .limit(limit);
   },
 };
